@@ -1,14 +1,28 @@
 /**
  * files.h — File-system interaction helpers.
  *
- * Provides a single entry point for opening a file's containing folder in
- * the system file manager via GtkFileLauncher (GTK 4.10+).
+ * Provides entry points for opening a file with its default application or,
+ * as a fallback, revealing its containing folder in the system file manager.
+ * Both operations use GtkFileLauncher (GTK 4.10+).
  */
 
 #ifndef PLUCK_FILES_H
 #define PLUCK_FILES_H
 
 #include <gtk/gtk.h>
+
+/**
+ * open_file:
+ * @filepath: Absolute or relative path to the file to open.
+ * @win:      The application window.  It is closed automatically once the
+ *            operation has been dispatched.
+ *
+ * Asynchronously tries to open @filepath with the desktop's default
+ * application for that file type.  If no default application is registered,
+ * the call falls back to revealing the file's parent directory in the file
+ * manager (identical to open_containing_folder()).
+ */
+void open_file(const char *filepath, GtkWindow *win);
 
 /**
  * open_containing_folder:
