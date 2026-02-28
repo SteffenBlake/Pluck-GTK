@@ -8,6 +8,8 @@ and opens the selected file's containing folder in your system file manager.
 Built with **GTK 4** and **gtk4-layer-shell** so it floats above every other
 window — bind it to a hotkey and it feels like a native launcher.
 
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/26d037f0-a2d4-4108-be84-fb47e899d23b" />
+
 ---
 
 ## Features
@@ -17,7 +19,6 @@ window — bind it to a hotkey and it feels like a native launcher.
 - Results truncated in the middle so long paths stay readable
 - Press **Enter** or click a result to open its folder in the file manager
 - Press **Escape** to dismiss
-- Anchored 33 % down the screen at 50 % of monitor width — stays out of the way
 - Layer-shell namespace `pluck-gtk` — easy to target in compositor rules
 
 ---
