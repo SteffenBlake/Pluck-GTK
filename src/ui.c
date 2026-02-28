@@ -106,7 +106,8 @@ typedef struct {
  *
  * Called when the user clicks a result row or presses Enter on it.
  * Extracts the plain-text file path stored in the row's GtkLabel and
- * delegates to open_containing_folder().
+ * delegates to open_file(), which tries the default application first and
+ * falls back to revealing the file in the file manager.
  */
 static void on_row_activated(GtkListBox    *list,
                               GtkListBoxRow *row,
@@ -119,7 +120,7 @@ static void on_row_activated(GtkListBox    *list,
     if (label && GTK_IS_LABEL(label)) {
         const char *filepath = gtk_label_get_text(GTK_LABEL(label));
         if (filepath && *filepath)
-            open_containing_folder(filepath, win);
+            open_file(filepath, win);
     }
 }
 
