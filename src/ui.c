@@ -83,6 +83,21 @@ static void apply_css(void)
 }
 
 /* -------------------------------------------------------------------------
+ * Internal types
+ * ---------------------------------------------------------------------- */
+
+/**
+ * PluckUI:
+ *
+ * Bundles the window and search entry pointers so that signal handlers
+ * which need both can receive them through a single user_data pointer.
+ */
+typedef struct {
+    GtkWindow      *win;
+    GtkSearchEntry *entry;
+} PluckUI;
+
+/* -------------------------------------------------------------------------
  * Signal handlers
  * ---------------------------------------------------------------------- */
 
@@ -177,7 +192,10 @@ static void update_results(GtkSearchEntry *entry, gpointer user_data)
  * on_key_pressed:
  *
  * Capture-phase key controller attached to the window.
- * Closes the window when Escape is pressed.
+ * • Closes the window when Escape is pressed.
+ * • When focus has moved to the results list (via arrow keys) and the user
+ *   starts typing again, grabs focus back to the search entry so the
+ *   keystroke is delivered there instead of to the list.
  */
 static gboolean on_key_pressed(GtkEventControllerKey *controller,
                                 guint                  keyval,
@@ -189,10 +207,34 @@ static gboolean on_key_pressed(GtkEventControllerKey *controller,
     (void)keycode;
     (void)state;
 
+    PluckUI *ui = user_data;
+
     if (keyval == GDK_KEY_Escape) {
-        gtk_window_close(GTK_WINDOW(user_data));
+        gtk_window_close(ui->win);
         return TRUE;
     }
+
+    /* If focus has moved away from the search entry (e.g. into the results
+     * list) and the user presses a key that isn't a navigation or modifier
+     * key, redirect focus back to the entry so typing resumes there. */
+    GtkWidget *focused = gtk_root_get_focus(GTK_ROOT(ui->win));
+    if (focused != GTK_WIDGET(ui->entry)) {
+        switch (keyval) {
+        case GDK_KEY_Up:
+        case GDK_KEY_Down:
+        case GDK_KEY_Return:
+        case GDK_KEY_KP_Enter:
+        case GDK_KEY_Tab:
+        case GDK_KEY_ISO_Left_Tab:
+            break;
+        default:
+            /* Grab focus back to the entry; return FALSE so the event
+             * continues to propagate and is handled by the entry. */
+            gtk_widget_grab_focus(GTK_WIDGET(ui->entry));
+            return FALSE;
+        }
+    }
+
     return FALSE;
 }
 
@@ -271,7 +313,15 @@ void activate(GtkApplication *app, gpointer user_data)
 
     GtkEventController *key_ctrl = gtk_event_controller_key_new();
     gtk_event_controller_set_propagation_phase(key_ctrl, GTK_PHASE_CAPTURE);
-    g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_key_pressed), win);
+
+    PluckUI *ui = g_new(PluckUI, 1);
+    ui->win   = win;
+    ui->entry = entry;
+    /* ui is freed automatically when the window (and therefore the
+     * controller) is destroyed. */
+    g_object_set_data_full(G_OBJECT(win), "pluck-ui", ui, g_free);
+
+    g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_key_pressed), ui);
     gtk_widget_add_controller(GTK_WIDGET(win), key_ctrl);
 
     apply_css();
