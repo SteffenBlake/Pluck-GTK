@@ -1,0 +1,79 @@
+name: Release
+
+# Trigger whenever a version tag is pushed to the repository.
+# Example: git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build (Linux x86_64) and publish release
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write   # required to create a GitHub Release
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # ── Install build-time dependencies ──────────────────────────────────
+      # gtk4-layer-shell is not yet in Ubuntu apt repos and must be built
+      # from source.  All other deps are satisfied by the standard Ubuntu
+      # package set.
+      - name: Install apt build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            gcc \
+            make \
+            pkg-config \
+            libgtk-4-dev \
+            meson \
+            ninja-build \
+            libwayland-dev \
+            wayland-protocols \
+            libgirepository1.0-dev \
+            valac
+
+      # gtk4-layer-shell (https://github.com/wmww/gtk4-layer-shell) is
+      # installed to /usr so its pkg-config file lands in the default search
+      # path (/usr/lib/x86_64-linux-gnu/pkgconfig/gtk4-layer-shell-0.pc).
+      - name: Build and install gtk4-layer-shell from source
+        run: |
+          git clone --depth 1 https://github.com/wmww/gtk4-layer-shell.git /tmp/gtk4-layer-shell
+          meson setup /tmp/gtk4-layer-shell/build /tmp/gtk4-layer-shell \
+            --prefix=/usr \
+            -Dtests=false \
+            -Dexamples=false \
+            -Ddocs=false
+          ninja -C /tmp/gtk4-layer-shell/build
+          sudo ninja -C /tmp/gtk4-layer-shell/build install
+
+      # ── Build ─────────────────────────────────────────────────────────────
+      - name: Build
+        run: make
+
+      # ── Package ───────────────────────────────────────────────────────────
+      # Creates a tarball whose contents mirror a standard Linux usr-tree so
+      # it can be extracted directly to / (or any PREFIX) for installation:
+      #
+      #   tar -xzf pluck-gtk.x86_64.tar.gz -C /usr/local --strip-components=2
+      #
+      # Internal layout:
+      #   usr/bin/pluck-gtk
+      - name: Package tarball
+        run: |
+          mkdir -p dist/usr/bin
+          cp lib/pluck-gtk dist/usr/bin/pluck-gtk
+          tar -czf pluck-gtk.x86_64.tar.gz -C dist .
+
+      # ── Publish GitHub Release ────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pluck-gtk.x86_64.tar.gz
+          generate_release_notes: true

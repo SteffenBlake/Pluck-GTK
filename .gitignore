@@ -1,0 +1,9 @@
+# Build output
+lib/
+src/*.o
+
+# Editor / OS clutter
+.DS_Store
+*.swp
+*~
+_codeql_detected_source_root
